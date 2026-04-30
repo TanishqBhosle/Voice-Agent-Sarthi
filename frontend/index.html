@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARIA — Voice AI To-Do Agent</title>
+  <meta name="description" content="ARIA: A voice-enabled AI personal assistant that manages your to-do list and remembers important information." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Background animated orbs -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ===== MAIN APP ===== -->
+  <div class="app-container">
+
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">🤖</div>
+        <div class="logo-text">
+          <h1>ARIA</h1>
+          <span>Voice AI Assistant</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-pill" id="status-pill">
+          <div class="status-dot"></div>
+          <span id="status-text">Ready</span>
+        </div>
+        <button class="btn-icon" id="reset-btn" title="Reset conversation">↺</button>
+      </div>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+
+      <!-- ===== LEFT: CHAT PANEL ===== -->
+      <section class="panel chat-panel">
+        <div class="panel-header">
+          <span class="panel-title">💬 Conversation</span>
+          <button class="btn-clear" id="clear-chat-btn">Clear</button>
+        </div>
+
+        <!-- Chat messages -->
+        <div class="chat-messages" id="chat-messages">
+          <div class="message message-assistant">
+            <div class="message-avatar">🤖</div>
+            <div class="message-content">
+              <p>Hi! I'm ARIA, your voice AI assistant. I can manage your to-do list and remember important things for you.</p>
+              <p style="margin-top:8px;opacity:0.7;font-size:0.85rem;">Try saying: <em>"Add buy milk"</em> or <em>"What tasks do I have?"</em></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transcript bar (shows live STT) -->
+        <div class="transcript-bar" id="transcript-bar">
+          <span id="transcript-text">🎤 Press and hold the mic to speak...</span>
+        </div>
+
+        <!-- Text input fallback -->
+        <div class="text-input-area">
+          <input
+            type="text"
+            id="text-input"
+            placeholder="Or type your message here..."
+            autocomplete="off"
+          />
+          <button class="btn-send" id="send-btn" title="Send">➤</button>
+        </div>
+      </section>
+
+      <!-- ===== RIGHT PANEL ===== -->
+      <aside class="right-panel">
+
+        <!-- MIC BUTTON -->
+        <div class="mic-section">
+          <div class="mic-wrapper">
+            <div class="mic-rings">
+              <div class="ring ring-1"></div>
+              <div class="ring ring-2"></div>
+              <div class="ring ring-3"></div>
+            </div>
+            <button class="mic-btn" id="mic-btn" title="Click to speak">
+              <span class="mic-icon">🎤</span>
+            </button>
+          </div>
+          <p class="mic-label" id="mic-label">Click to speak</p>
+        </div>
+
+        <!-- TASKS PANEL -->
+        <div class="panel tasks-panel">
+          <div class="panel-header">
+            <span class="panel-title">✅ To-Do List</span>
+            <span class="task-count" id="task-count">0</span>
+          </div>
+          <div class="tasks-list" id="tasks-list">
+            <div class="empty-state">
+              <span class="empty-icon">📝</span>
+              <p>No tasks yet. Say "Add a task" to get started!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- MEMORY PANEL -->
+        <div class="panel memory-panel">
+          <div class="panel-header">
+            <span class="panel-title">🧠 Memory</span>
+            <span class="memory-badge" id="memory-count">0</span>
+          </div>
+          <div class="memory-list" id="memory-list">
+            <div class="empty-state">
+              <span class="empty-icon">💭</span>
+              <p>No memories stored yet.</p>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+      <span>ARIA Voice Agent · Powered by <strong>Groq</strong> LLaMA 3.3 70B</span>
+      <span id="tts-toggle-wrapper">
+        <label class="toggle-label">
+          <input type="checkbox" id="tts-toggle" checked />
+          <span class="toggle-slider"></span>
+          Voice Responses
+        </label>
+      </span>
+    </footer>
+  </div>
+
+  <!-- Tool call toast notification -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
