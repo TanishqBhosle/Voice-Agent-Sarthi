@@ -131,7 +131,9 @@ function delete_task(task_id) {
     };
   }
 
-  const deletedTask = tasks.splice(taskIndex, 1)[0];
+  tasks[taskIndex].status = 'deleted';
+  tasks[taskIndex].deleted_at = new Date().toISOString();
+  const deletedTask = tasks[taskIndex];
   writeTasks(tasks);
 
   return {

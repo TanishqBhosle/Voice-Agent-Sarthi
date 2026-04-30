@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "id": "1777554768931",
+    "content": "Exam on 26 May at 10:10",
+    "category": "exam",
+    "event_date": "2026-05-25",
+    "stored_at": "2026-04-30T13:12:48.931Z",
+    "date": "Thursday, April 30, 2026"
+  }
+]

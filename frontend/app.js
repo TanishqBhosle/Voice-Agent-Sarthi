@@ -1,38 +1,40 @@
 // =============================================
-// app.js — Frontend Voice Agent Logic
-// Handles STT, TTS, API calls, task rendering
+// app.js — Premium ARIA Frontend Logic
 // =============================================
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3001/api';
 
 // ---- DOM Elements ----
-const micBtn        = document.getElementById('mic-btn');
-const micLabel      = document.getElementById('mic-label');
-const micRings      = document.querySelector('.mic-rings');
-const chatMessages  = document.getElementById('chat-messages');
-const textInput     = document.getElementById('text-input');
-const sendBtn       = document.getElementById('send-btn');
-const tasksList     = document.getElementById('tasks-list');
-const taskCount     = document.getElementById('task-count');
-const memoryList    = document.getElementById('memory-list');
-const memoryCount   = document.getElementById('memory-count');
-const statusPill    = document.getElementById('status-pill');
-const statusText    = document.getElementById('status-text');
-const transcriptBar = document.getElementById('transcript-bar');
-const transcriptTxt = document.getElementById('transcript-text');
-const ttsToggle     = document.getElementById('tts-toggle');
-const resetBtn      = document.getElementById('reset-btn');
-const clearChatBtn  = document.getElementById('clear-chat-btn');
-const toast         = document.getElementById('toast');
+const micBtn         = document.getElementById('mic-btn');
+const micLabel       = document.getElementById('mic-label');
+const chatMessages   = document.getElementById('chat-messages');
+const textInput      = document.getElementById('text-input');
+const sendBtn        = document.getElementById('send-btn');
+const tasksList      = document.getElementById('tasks-list');
+const taskCount      = document.getElementById('task-count');
+const memoryList     = document.getElementById('memory-list');
+const memoryCount    = document.getElementById('memory-count');
+const statusPill     = document.getElementById('status-pill');
+const statusText     = document.getElementById('status-text');
+const transcriptBar  = document.getElementById('transcript-bar');
+const transcriptTxt  = document.getElementById('transcript-text');
+const ttsToggle      = document.getElementById('tts-toggle');
+const resetBtn       = document.getElementById('reset-btn');
+const clearChatBtn   = document.getElementById('clear-chat-btn');
+const toastContainer = document.getElementById('toast-container');
+const quickTaskInput = document.getElementById('quick-task-input');
+const quickTaskBtn   = document.getElementById('quick-task-btn');
+const quickMemInput  = document.getElementById('quick-memory-input');
+const quickMemBtn    = document.getElementById('quick-memory-btn');
 
 // ---- State ----
-let isListening   = false;
-let isSpeaking    = false;
-let recognition   = null;
-let memoryItems   = [];   // Local copy of stored memories
+let isListening = false;
+let isSpeaking  = false;
+let recognition = null;
+let silenceTimer = null;
 
 // =============================================
-// STATUS HELPERS
+// UTILITIES & FEEDBACK
 // =============================================
 
 function setStatus(state, label) {
@@ -40,179 +42,187 @@ function setStatus(state, label) {
   statusText.textContent = label;
 }
 
-function showToast(msg) {
+function showToast(msg, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
   toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3000);
+  toastContainer.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(20px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Celebration effect (simple confetti)
+function celebrate() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  // Note: Simplified for now, could integrate a library like canvas-confetti
+  showToast('🎉 Goal Achieved!', 'success');
 }
 
 // =============================================
-// SPEECH-TO-TEXT (Web Speech API)
+// API DIRECT ACTIONS
 // =============================================
 
-// Check browser support
+async function apiAction(endpoint, method = 'GET', body = null) {
+  try {
+    const options = {
+      method,
+      headers: { 'Content-Type': 'application/json' }
+    };
+    if (body) options.body = JSON.stringify(body);
+    
+    const response = await fetch(`${API_BASE}${endpoint}`, options);
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    
+    const data = await response.json();
+    
+    // Update global lists if returned
+    if (data.tasks) renderTasks(data.tasks);
+    if (data.memories) renderMemories(data.memories);
+    
+    return data;
+  } catch (err) {
+    console.error(`API Action Failed (${endpoint}):`, err);
+    showToast('Connection error', 'error');
+    return null;
+  }
+}
+
+// Direct task actions
+async function addTask(title) {
+  if (!title.trim()) return;
+  const res = await apiAction('/tasks', 'POST', { title });
+  if (res?.success) {
+    showToast('Task added');
+    quickTaskInput.value = '';
+  }
+}
+
+async function completeTask(id) {
+  const res = await apiAction(`/tasks/${id}/complete`, 'PUT');
+  if (res?.success) {
+    showToast('Task completed!', 'success');
+    celebrate();
+  }
+}
+
+async function deleteTask(id) {
+  const res = await apiAction(`/tasks/${id}`, 'DELETE');
+  if (res?.success) showToast('Task deleted');
+}
+
+// Direct memory actions
+async function addMemory(content) {
+  if (!content.trim()) return;
+  const res = await apiAction('/memories', 'POST', { content });
+  if (res?.success) {
+    showToast('Memory stored', 'success');
+    quickMemInput.value = '';
+  }
+}
+
+async function deleteMemory(id) {
+  const res = await apiAction(`/memories/${id}`, 'DELETE');
+  if (res?.success) showToast('Memory forgotten');
+}
+
+// =============================================
+// SPEECH-TO-TEXT
+// =============================================
+
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-if (!SpeechRecognition) {
-  micBtn.disabled = true;
-  micLabel.textContent = 'Speech not supported in this browser';
-  micBtn.style.opacity = '0.4';
-} else {
+if (SpeechRecognition) {
   recognition = new SpeechRecognition();
-  recognition.continuous     = false;   // Stop after one utterance
-  recognition.interimResults = true;    // Show live transcript
-  recognition.lang           = 'en-US';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
 
-  // Live transcript update
   recognition.onresult = (event) => {
-    let interimTranscript = '';
-    let finalTranscript   = '';
+    let interim = '';
+    let final = '';
 
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript;
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript;
-      } else {
-        interimTranscript += transcript;
-      }
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) final += t;
+      else interim += t;
     }
 
-    // Show live in transcript bar
-    transcriptTxt.textContent = '🎤 ' + (finalTranscript || interimTranscript);
-    transcriptBar.classList.add('active');
-
-    // When final transcript is ready, send it
-    if (finalTranscript) {
+    transcriptTxt.textContent = final || interim;
+    
+    if (final) {
       stopListening();
-      sendMessage(finalTranscript.trim());
+      sendMessage(final.trim());
     }
   };
 
   recognition.onerror = (event) => {
-    console.error('Speech recognition error:', event.error);
+    console.error('STT Error:', event.error);
     stopListening();
-    setStatus('', 'Ready');
-    if (event.error !== 'no-speech') {
-      showToast(`Mic error: ${event.error}`);
-    }
-    transcriptTxt.textContent = '🎤 Press and hold the mic to speak...';
-    transcriptBar.classList.remove('active');
+    if (event.error !== 'no-speech') showToast(`Mic error: ${event.error}`, 'error');
   };
 
-  recognition.onend = () => {
-    if (isListening) stopListening();
-  };
+  recognition.onend = () => { if (isListening) stopListening(); };
 }
 
-// Start listening
 function startListening() {
   if (!recognition || isListening) return;
   try {
     recognition.start();
     isListening = true;
     micBtn.classList.add('listening');
-    micLabel.textContent = '🔴 Listening... (speak now)';
-    micLabel.classList.add('listening');
-    micRings.querySelectorAll('.ring').forEach(r => r.style.animation = 'ringPulse 1.5s ease-out infinite');
-    setStatus('listening', 'Listening');
-    transcriptTxt.textContent = '🎤 Listening...';
+    micLabel.textContent = 'Listening...';
     transcriptBar.classList.add('active');
-  } catch (err) {
-    console.error('Failed to start recognition:', err);
-  }
+    setStatus('listening', 'Listening');
+  } catch (err) { console.error(err); }
 }
 
-// Stop listening
 function stopListening() {
   if (!isListening) return;
   isListening = false;
   try { recognition.stop(); } catch(e) {}
   micBtn.classList.remove('listening');
   micLabel.textContent = 'Click to speak';
-  micLabel.classList.remove('listening');
-  micRings.querySelectorAll('.ring').forEach(r => r.style.animation = '');
+  transcriptBar.classList.remove('active');
+  setStatus('', 'Ready');
 }
 
-// Toggle mic on click
-micBtn.addEventListener('click', () => {
-  if (isListening) {
-    stopListening();
-    setStatus('', 'Ready');
-    transcriptTxt.textContent = '🎤 Press and hold the mic to speak...';
-    transcriptBar.classList.remove('active');
-  } else {
-    startListening();
-  }
-});
+micBtn.addEventListener('click', () => isListening ? stopListening() : startListening());
 
 // =============================================
-// TEXT-TO-SPEECH (Web Speech Synthesis API)
+// TEXT-TO-SPEECH
 // =============================================
 
 function speakText(text) {
-  if (!ttsToggle.checked) return;
-  if (!window.speechSynthesis) return;
+  if (!ttsToggle.checked || !window.speechSynthesis) return;
 
-  // Cancel any ongoing speech
   window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1.0;
+  
+  // Clean text of markdown
+  const clean = text.replace(/[*#`_]/g, '').trim();
+  utterance.text = clean;
 
-  // Clean up text for speaking (remove emojis and markdown)
-  const cleanText = text
-    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')  // Remove emojis
-    .replace(/\*\*/g, '')                      // Remove bold
-    .replace(/\*/g, '')                        // Remove italics
-    .replace(/`/g, '')                         // Remove code
-    .replace(/#+\s/g, '')                      // Remove headings
-    .trim();
-
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.rate   = 1.05;   // Slightly faster
-  utterance.pitch  = 1.0;
-  utterance.volume = 1.0;
-
-  // Pick a nice voice if available
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v =>
-    v.name.includes('Samantha') ||
-    v.name.includes('Google US English') ||
-    v.name.includes('Microsoft Aria') ||
-    v.name.includes('en-US')
-  );
-  if (preferred) utterance.voice = preferred;
-
-  utterance.onstart = () => {
-    isSpeaking = true;
-    setStatus('speaking', 'Speaking');
-  };
-  utterance.onend = () => {
-    isSpeaking = false;
-    setStatus('', 'Ready');
-  };
+  utterance.onstart = () => { isSpeaking = true; setStatus('speaking', 'Speaking'); };
+  utterance.onend = () => { isSpeaking = false; setStatus('', 'Ready'); };
 
   window.speechSynthesis.speak(utterance);
 }
 
-// Load voices (some browsers load async)
-window.speechSynthesis?.addEventListener('voiceschanged', () => {
-  window.speechSynthesis.getVoices();
-});
-
 // =============================================
-// CHAT — SEND MESSAGE
+// CHAT LOGIC
 // =============================================
 
 async function sendMessage(text) {
   if (!text || text.trim() === '') return;
 
-  // Show user message
   appendMessage('user', text);
   textInput.value = '';
-  transcriptTxt.textContent = '🎤 Press the mic to speak...';
-  transcriptBar.classList.remove('active');
-
-  // Show thinking indicator
   setStatus('thinking', 'Thinking...');
-  const thinkingId = appendThinking();
 
   try {
     const response = await fetch(`${API_BASE}/chat`, {
@@ -221,265 +231,218 @@ async function sendMessage(text) {
       body: JSON.stringify({ message: text })
     });
 
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error('Server error');
     const data = await response.json();
 
-    // Remove thinking indicator
-    removeThinking(thinkingId);
-
-    // Show AI reply
     appendMessage('assistant', data.reply, data.toolCalls);
-
-    // Speak the reply
     speakText(data.reply);
 
-    // Update task list
     if (data.tasks) renderTasks(data.tasks);
-
-    // Check if memory was stored and update display
-    if (data.toolCalls) {
-      data.toolCalls.forEach(tc => {
-        if (tc.tool === 'store_memory' && tc.result?.success) {
-          addMemoryItem(tc.args.content);
-          showToast('🧠 Memory stored!');
-        }
-        if (tc.tool === 'add_task') showToast('✅ Task added!');
-        if (tc.tool === 'delete_task') showToast('🗑️ Task deleted!');
-        if (tc.tool === 'complete_task') showToast('🎉 Task completed!');
-      });
-    }
+    if (data.memories) renderMemories(data.memories);
 
     setStatus('', 'Ready');
-
   } catch (err) {
-    removeThinking(thinkingId);
-    console.error('Send error:', err);
-
-    const errMsg = `Sorry, I couldn't connect to the server. Make sure the backend is running on port 3000.`;
-    appendMessage('assistant', errMsg);
-    speakText(errMsg);
+    console.error(err);
+    appendMessage('assistant', "Sorry, I'm having trouble connecting to my brain right now.");
     setStatus('', 'Error');
   }
 }
 
-// ---- Send via Enter key ----
-textInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage(textInput.value.trim());
-  }
-});
-
-// ---- Send via button ----
-sendBtn.addEventListener('click', () => sendMessage(textInput.value.trim()));
-
-// =============================================
-// CHAT MESSAGE RENDERING
-// =============================================
-
 function appendMessage(role, text, toolCalls = []) {
   const msg = document.createElement('div');
   msg.className = `message message-${role}`;
-
+  
   const avatar = document.createElement('div');
   avatar.className = 'message-avatar';
-  avatar.textContent = role === 'user' ? '👤' : '🤖';
+  avatar.innerHTML = role === 'user' ? 
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' :
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
 
   const content = document.createElement('div');
   content.className = 'message-content';
-
-  // Convert simple markdown to HTML
-  const formatted = text
+  
+  // Basic markdown-like formatting
+  let formatted = text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/\n/g, '<br>');
-
+  
   content.innerHTML = `<p>${formatted}</p>`;
-
-  // Add tool call badges
-  if (toolCalls && toolCalls.length > 0) {
+  
+  if (toolCalls?.length > 0) {
+    const toolsWrap = document.createElement('div');
+    toolsWrap.style.display = 'flex';
+    toolsWrap.style.flexWrap = 'wrap';
+    toolsWrap.style.gap = '6px';
+    toolsWrap.style.marginTop = '8px';
+    
     toolCalls.forEach(tc => {
-      const badge = document.createElement('div');
-      badge.className = 'tool-badge';
-      const icons = {
-        add_task: '➕',
-        list_tasks: '📋',
-        update_task: '✏️',
-        delete_task: '🗑️',
-        complete_task: '✅',
-        store_memory: '🧠',
-        retrieve_memories: '💭'
-      };
-      badge.textContent = `${icons[tc.tool] || '🔧'} ${tc.tool.replace(/_/g, ' ')}`;
-      content.appendChild(badge);
+      const badge = document.createElement('span');
+      badge.className = 'mem-badge';
+      badge.style.background = 'rgba(124, 106, 247, 0.1)';
+      badge.style.color = 'var(--accent-primary)';
+      badge.textContent = `🔧 ${tc.tool.replace('_', ' ')}`;
+      toolsWrap.appendChild(badge);
     });
+    content.appendChild(toolsWrap);
   }
 
   msg.appendChild(avatar);
   msg.appendChild(content);
   chatMessages.appendChild(msg);
-
-  // Scroll to bottom
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Thinking animation
-function appendThinking() {
-  const id = 'thinking-' + Date.now();
-  const msg = document.createElement('div');
-  msg.className = 'message message-assistant';
-  msg.id = id;
-  msg.innerHTML = `
-    <div class="message-avatar">🤖</div>
-    <div class="message-content">
-      <div class="thinking-dots">
-        <span>●</span><span>●</span><span>●</span>
-      </div>
-    </div>`;
-  chatMessages.appendChild(msg);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-  return id;
-}
-
-function removeThinking(id) {
-  const el = document.getElementById(id);
-  if (el) el.remove();
+  chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
 }
 
 // =============================================
-// TASK LIST RENDERING
+// RENDERING
 // =============================================
 
 function renderTasks(tasks) {
   taskCount.textContent = tasks.length;
+  tasksList.innerHTML = '';
 
   if (tasks.length === 0) {
     tasksList.innerHTML = `
       <div class="empty-state">
-        <span class="empty-icon">📝</span>
-        <p>No tasks yet. Say "Add a task" to get started!</p>
+        <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></div>
+        <p>Your list is empty.</p>
       </div>`;
     return;
   }
 
-  tasksList.innerHTML = '';
-
   tasks.forEach(task => {
     const item = document.createElement('div');
-    item.className = `task-item ${task.status === 'completed' ? 'completed' : ''}`;
-    item.setAttribute('data-id', task.id);
+    item.className = `task-item ${task.status === 'completed' ? 'completed' : ''} ${task.status === 'deleted' ? 'deleted' : ''}`;
+    
+    let badgeHtml = '';
+    if (task.status === 'deleted') {
+      badgeHtml = `<span class="task-badge badge-deleted">Deleted</span>`;
+    } else if (task.status === 'completed') {
+      badgeHtml = `<span class="task-badge badge-completed">Completed</span>`;
+    } else if (task.updated_at) {
+      badgeHtml = `<span class="task-badge badge-updated">Updated</span>`;
+    } else {
+      badgeHtml = `<span class="task-badge badge-added">Added</span>`;
+    }
 
-    const check = document.createElement('div');
-    check.className = 'task-check';
-    check.textContent = task.status === 'completed' ? '✓' : '';
-    check.title = 'Mark as done';
+    item.innerHTML = `
+      <div class="task-check" title="Toggle completion" style="${task.status === 'deleted' ? 'visibility:hidden' : ''}"></div>
+      <div class="task-info">
+        <span class="task-title">${task.title}</span>
+        <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+          ${badgeHtml}
+          <span class="task-meta">Created ${new Date(task.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+      ${task.status !== 'deleted' ? `
+      <button class="btn-delete" title="Delete task">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>` : ''}
+    `;
 
-    // Click to complete via voice command (or API)
-    check.addEventListener('click', () => {
-      sendMessage(`Mark "${task.title}" as completed`);
-    });
-
-    const info = document.createElement('div');
-    info.style.flex = '1';
-    info.style.minWidth = '0';
-
-    const title = document.createElement('div');
-    title.className = 'task-title';
-    title.textContent = task.title;
-
-    const meta = document.createElement('span');
-    meta.className = 'task-meta';
-    const date = new Date(task.created_at);
-    meta.textContent = date.toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-
-    info.appendChild(title);
-    info.appendChild(meta);
-
-    const status = document.createElement('div');
-    status.className = `task-status ${task.status}`;
-    status.textContent = task.status;
-
-    item.appendChild(check);
-    item.appendChild(info);
-    item.appendChild(status);
+    const checkBtn = item.querySelector('.task-check');
+    if (checkBtn) checkBtn.onclick = () => completeTask(task.id);
+    
+    const delBtn = item.querySelector('.btn-delete');
+    if (delBtn) delBtn.onclick = () => deleteTask(task.id);
+    
     tasksList.appendChild(item);
   });
 }
 
-// =============================================
-// MEMORY RENDERING
-// =============================================
+function renderMemories(memories) {
+  memoryCount.textContent = memories.length;
+  memoryList.innerHTML = '';
 
-function addMemoryItem(content) {
-  memoryItems.push({ content, time: new Date() });
-  renderMemories();
-}
-
-function renderMemories() {
-  memoryCount.textContent = memoryItems.length;
-
-  if (memoryItems.length === 0) {
+  if (memories.length === 0) {
     memoryList.innerHTML = `
       <div class="empty-state">
-        <span class="empty-icon">💭</span>
-        <p>No memories stored yet.</p>
+        <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>
+        <p>No memories stored.</p>
       </div>`;
     return;
   }
 
-  memoryList.innerHTML = '';
-  [...memoryItems].reverse().forEach(mem => {
+  // Sort: upcoming events first
+  const sorted = [...memories].sort((a, b) => {
+    if (a.event_date && !b.event_date) return -1;
+    if (!a.event_date && b.event_date) return 1;
+    if (a.event_date && b.event_date) return new Date(a.event_date) - new Date(b.event_date);
+    return new Date(b.stored_at) - new Date(a.stored_at);
+  });
+
+  sorted.forEach(mem => {
     const item = document.createElement('div');
     item.className = 'memory-item';
+    
+    let daysHtml = '';
+    if (mem.event_date) {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const target = new Date(mem.event_date);
+      target.setHours(0,0,0,0);
+      const diff = Math.round((target - today) / (1000 * 60 * 60 * 24));
+      
+      let label = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff < 0 ? 'Past' : `${diff}d left`;
+      daysHtml = `<span class="days-left">${label}</span>`;
+    }
+
     item.innerHTML = `
-      <span>${mem.content}</span>
-      <span class="mem-time">${mem.time.toLocaleTimeString()}</span>`;
+      <div class="mem-info">
+        <span class="mem-content">${mem.content}</span>
+        <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+          <span class="mem-badge">${mem.category || 'general'}</span>
+          <span class="mem-meta">${new Date(mem.stored_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+      ${daysHtml}
+      <button class="btn-delete" title="Delete memory">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    `;
+
+    item.querySelector('.btn-delete').onclick = () => deleteMemory(mem.id);
     memoryList.appendChild(item);
   });
 }
 
 // =============================================
-// CONTROLS: Reset & Clear
+// INITIALIZATION & EVENTS
 // =============================================
 
-resetBtn.addEventListener('click', async () => {
-  try {
-    await fetch(`${API_BASE}/reset`, { method: 'POST' });
-    showToast('🔄 Conversation reset!');
-  } catch(e) {}
-});
+// Quick Add Events
+quickTaskBtn.onclick = () => addTask(quickTaskInput.value);
+quickTaskInput.onkeydown = (e) => { if (e.key === 'Enter') addTask(quickTaskInput.value); };
 
-clearChatBtn.addEventListener('click', () => {
-  chatMessages.innerHTML = `
-    <div class="message message-assistant">
-      <div class="message-avatar">🤖</div>
-      <div class="message-content">
-        <p>Chat cleared! How can I help you?</p>
-      </div>
-    </div>`;
-});
+quickMemBtn.onclick = () => addMemory(quickMemInput.value);
+quickMemInput.onkeydown = (e) => { if (e.key === 'Enter') addMemory(quickMemInput.value); };
 
-// =============================================
-// INITIALIZATION
-// =============================================
+// Chat Input
+textInput.onkeydown = (e) => { if (e.key === 'Enter') sendMessage(textInput.value); };
+sendBtn.onclick = () => sendMessage(textInput.value);
 
+// Header Actions
+resetBtn.onclick = async () => {
+  await apiAction('/reset', 'POST');
+  showToast('Conversation reset');
+  chatMessages.innerHTML = '';
+};
+clearChatBtn.onclick = () => {
+  chatMessages.innerHTML = '';
+  showToast('Chat cleared');
+};
+
+// Initial Load
 async function init() {
-  try {
-    // Load initial task list
-    const res = await fetch(`${API_BASE}/tasks`);
-    const data = await res.json();
-    renderTasks(data.tasks || []);
-    console.log('✅ Connected to ARIA backend');
-  } catch (err) {
-    console.warn('Backend not connected:', err.message);
-    showToast('⚠️ Backend not running on port 3000');
-    setStatus('', 'Offline');
-  }
+  setStatus('', 'Connecting...');
+  const tasks = await apiAction('/tasks');
+  const memories = await apiAction('/memories');
+  
+  if (tasks) renderTasks(tasks.tasks);
+  if (memories) renderMemories(memories.memories);
+  
+  setStatus('', 'Ready');
+  console.log('ARIA System Initialized');
 }
 
 init();
