@@ -45,13 +45,19 @@ function setStatus(state, label) {
 function showToast(msg, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  toast.textContent = msg;
+  
+  let icon = '🔔';
+  if (type === 'success') icon = '✅';
+  if (type === 'error') icon = '❌';
+  
+  toast.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
   toastContainer.appendChild(toast);
+  
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateX(20px)';
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
+    toast.style.transform = 'translateX(40px)';
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
 }
 
 // Celebration effect (simple confetti)
@@ -304,8 +310,8 @@ function renderTasks(tasks) {
   if (tasks.length === 0) {
     tasksList.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></div>
-        <p>Your list is empty.</p>
+        <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></div>
+        <p>No active tasks.</p>
       </div>`;
     return;
   }
@@ -358,7 +364,7 @@ function renderMemories(memories) {
     memoryList.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>
-        <p>No memories stored.</p>
+        <p>Memory is empty.</p>
       </div>`;
     return;
   }
@@ -434,15 +440,25 @@ clearChatBtn.onclick = () => {
 
 // Initial Load
 async function init() {
-  setStatus('', 'Connecting...');
-  const tasks = await apiAction('/tasks');
-  const memories = await apiAction('/memories');
+  const preloader = document.getElementById('preloader');
   
-  if (tasks) renderTasks(tasks.tasks);
-  if (memories) renderMemories(memories.memories);
-  
-  setStatus('', 'Ready');
-  console.log('ARIA System Initialized');
+  try {
+    const tasks = await apiAction('/tasks');
+    const memories = await apiAction('/memories');
+    
+    if (tasks) renderTasks(tasks.tasks);
+    if (memories) renderMemories(memories.memories);
+    
+    console.log('ARIA System Initialized');
+  } catch (err) {
+    console.error('Init failed:', err);
+  } finally {
+    // Smoothly fade out preloader
+    setTimeout(() => {
+      preloader.style.opacity = '0';
+      setTimeout(() => preloader.style.display = 'none', 500);
+    }, 800);
+  }
 }
 
 init();
