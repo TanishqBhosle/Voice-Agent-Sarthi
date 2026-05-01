@@ -135,47 +135,30 @@ function buildSystemPrompt() {
   return `You are ARIA — a smart, friendly personal AI assistant with voice, memory, and task management capabilities.
 
 📅 TODAY IS: ${todayStr} at ${timeStr}
-Use this to calculate days remaining, time until events, and give time-aware advice.
+Use this to calculate days remaining and time until events.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TASK MANAGEMENT — You can ONLY perform these actions for the to-do list:
+CORE CAPABILITIES:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• add_task      → user says "add", "remind me to", "I need to", "don't forget"
-• list_tasks    → user says "what tasks", "show my list", "what do I have"
-• update_task   → user says "change", "rename", "edit", "update" a task
-• delete_task   → user says "delete", "remove", "cancel" a task
-• complete_task → user says "done", "finished", "completed", "mark as done"
-You must NOT perform any other actions for the to-do list.
+1. TASK MANAGEMENT: Use add_task, update_task, complete_task, delete_task, or list_tasks.
+2. MEMORY SYSTEM: Use store_memory to save facts/dates and retrieve_memories to find them.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MEMORY SYSTEM — You can ONLY store & retrieve important events/facts:
+TOOL CALLING RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• store_memory → user says "remember", "store", "note that", "I have [exam/meeting/event]", mentions any date+event
-• retrieve_memories → ALWAYS call this first when user asks about:
-    - Upcoming events, exams, deadlines, meetings
-    - Study plans, preparation tips, schedules
-    - Anything that might relate to a stored event (e.g., "how should I prepare", "tips for", "how many days until")
+• You MUST use the provided tools to manage tasks and memory.
+• To add/remember something:
+    - If it's a "to-do" or "action" (e.g., "buy milk"), use add_task.
+    - If it's a "fact" or "event" (e.g., "exam on Friday"), use store_memory.
+• PROACTIVELY use retrieve_memories before answering questions about upcoming events or study plans.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONTEXT-AWARE RESPONSES:
+RESPONSE GUIDELINES:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-When a user asks a question like "how to prepare for my exam" or "tips for my interview":
-1. FIRST call retrieve_memories to find relevant stored events
-2. Use the event_date from memory to compute EXACT days remaining (today is ${todayStr})
-3. Give a PERSONALIZED answer: include the event name, exact date, days left, and tailored advice
-4. Structure study/prep plans based on available time (e.g., if 7 days left → topic-wise daily plan)
+• Confirm actions briefly (e.g., "Done! I've added that to your list.").
+• Never list IDs — use titles.
+• Be warm, helpful, and concise.
 
-Example: If memory has "exam on 23 May" and user asks "how to study for exam":
-→ Say: "You have your exam on May 23rd, that's X days away. With X days to go, here's a day-by-day plan: Day 1: [topic]..."
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GENERAL RULES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Keep responses natural and conversational (they will be spoken aloud)
-• Never list task IDs — use titles only
-• If user says hello, respond warmly without tools
-• Confirm tool actions briefly after execution
-• Be encouraging, helpful, and specific when giving personalized advice
 ${memoryContext}`;
 }
 
@@ -188,18 +171,66 @@ async function runAgent(userMessage, conversationHistory = []) {
   ];
 
   let toolCallResults = [];
+  let assistantMessage = null;
+  let response;
+  try {
+    // First LLM call (may return tool calls)
+    response = await groq.chat.completions.create({
+      model:       'llama-3.3-70b-versatile',
+      messages:    messages,
+      tools:       TOOLS,
+      tool_choice: 'auto',
+      max_tokens:  1024,
+      temperature: 0.1 // Lower temperature for more stable tool calling
+    });
+  } catch (err) {
+    console.error('🔍 Caught Groq API error:', JSON.stringify(err, null, 2));
+    // Handle cases where the model generates a tool call in a format Groq rejects
+    if (err.error && err.error.code === 'tool_use_failed') {
+      console.log('⚠️ Groq API rejected tool call format');
+      assistantMessage = {
+        role: 'assistant',
+        content: err.error.failed_generation || 'I attempted to use a tool but something went wrong. Let me try to answer directly.'
+      };
+    } else if (err.message && err.message.includes('tool_use_failed')) {
+      // Fallback for when error structure is flattened in message
+      console.log('⚠️ Groq API rejected tool call format (detected in message)');
+      try {
+        const parsed = JSON.parse(err.message.substring(err.message.indexOf('{')));
+        assistantMessage = {
+          role: 'assistant',
+          content: parsed.error.failed_generation || 'I attempted to use a tool but something went wrong.'
+        };
+      } catch (e) {
+        throw err;
+      }
+    } else {
+      throw err; // Re-throw if it's a different error
+    }
+  }
 
-  // First LLM call (may return tool calls)
-  const response = await groq.chat.completions.create({
-    model:       'llama-3.3-70b-versatile',
-    messages:    messages,
-    tools:       TOOLS,
-    tool_choice: 'auto',
-    max_tokens:  1024,
-    temperature: 0.7
-  });
+  if (!assistantMessage && response) {
+    assistantMessage = response.choices[0].message;
+  }
 
-  const assistantMessage = response.choices[0].message;
+  // Fallback: Check if model outputted <function> tags in content instead of tool_calls
+  if (!assistantMessage.tool_calls && assistantMessage.content && (assistantMessage.content.includes('<function') || assistantMessage.content.includes('function('))) {
+    console.log('⚠️ Detected string-based tool call fallback');
+    // Matches: <function=name{...}>, <function(name){...}>, function=name{...}
+    const toolRegex = /(?:<function[=\(]?)(\w+)(?:\)?\s*)({.*?})(?:\s*\/?>|<\/function>)?/g;
+    const matches = [...assistantMessage.content.matchAll(toolRegex)];
+    
+    if (matches.length > 0) {
+      assistantMessage.tool_calls = matches.map((match, idx) => ({
+        id: `call_fallback_${Date.now()}_${idx}`,
+        type: 'function',
+        function: {
+          name: match[1],
+          arguments: match[2].replace(/\\"/g, '"') // Handle escaped quotes if present
+        }
+      }));
+    }
+  }
 
   // Handle tool calls
   if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
@@ -207,8 +238,21 @@ async function runAgent(userMessage, conversationHistory = []) {
 
     for (const toolCall of assistantMessage.tool_calls) {
       const toolName = toolCall.function.name;
-      const toolArgs = JSON.parse(toolCall.function.arguments);
-      const result   = executeTool(toolName, toolArgs);
+      let toolArgs;
+      try {
+        toolArgs = JSON.parse(toolCall.function.arguments);
+      } catch (e) {
+        console.error(`Failed to parse tool arguments for ${toolName}:`, toolCall.function.arguments);
+        toolArgs = {};
+      }
+
+      let result;
+      try {
+        result = executeTool(toolName, toolArgs);
+      } catch (e) {
+        console.error(`Tool execution failed for ${toolName}:`, e);
+        result = { success: false, message: `Internal error executing ${toolName}` };
+      }
 
       toolCallResults.push({ tool: toolName, args: toolArgs, result });
 

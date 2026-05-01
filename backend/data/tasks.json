@@ -2,33 +2,115 @@
   {
     "id": "a5d9dd54-64cd-4cf6-973e-875700d5edb0",
     "title": "biscuit",
-    "status": "pending",
-    "created_at": "2026-04-30T11:43:45.728Z"
+    "status": "deleted",
+    "created_at": "2026-04-30T11:43:45.728Z",
+    "deleted_at": "2026-05-01T08:07:46.825Z"
   },
   {
     "id": "c6d6db86-4f65-43ac-8b18-186dc21e4ead",
     "title": "Buy biscuit",
-    "status": "pending",
+    "status": "deleted",
     "created_at": "2026-04-30T11:49:20.955Z",
-    "updated_at": "2026-04-30T13:04:25.090Z"
+    "updated_at": "2026-04-30T13:04:25.090Z",
+    "deleted_at": "2026-05-01T08:07:44.711Z"
   },
   {
     "id": "2c55f896-a867-4af0-9e94-f36953202291",
-    "title": "Buy milk and eggs",
+    "title": "Buy almond milk",
     "status": "completed",
     "created_at": "2026-04-30T12:57:20.469Z",
-    "completed_at": "2026-04-30T13:04:08.316Z"
+    "completed_at": "2026-04-30T13:04:08.316Z",
+    "updated_at": "2026-05-01T07:32:50.010Z"
   },
   {
     "id": "0017dc66-9f82-4f50-a259-f3d323b74d52",
-    "title": "Buy milk and biscuit",
-    "status": "pending",
-    "created_at": "2026-04-30T13:04:05.137Z"
+    "title": "buy almond milk",
+    "status": "deleted",
+    "created_at": "2026-04-30T13:04:05.137Z",
+    "updated_at": "2026-05-01T07:33:09.840Z",
+    "deleted_at": "2026-05-01T08:07:41.745Z"
   },
   {
     "id": "6cc42725-9ca0-4f1d-b9f8-538b0c521e5d",
     "title": "biscrete",
+    "status": "deleted",
+    "created_at": "2026-04-30T21:24:15.945Z",
+    "deleted_at": "2026-05-01T07:19:05.736Z"
+  },
+  {
+    "id": "44514e14-85c8-4a3d-be9b-5cfaf9233b07",
+    "title": "buy milk and biscuits",
+    "status": "deleted",
+    "created_at": "2026-05-01T07:16:29.187Z",
+    "deleted_at": "2026-05-01T07:33:56.272Z"
+  },
+  {
+    "id": "542cfc39-b339-4771-b3dc-bde0d9d66d60",
+    "title": "Buy a 100 page notebook and a set of Trends pens",
+    "status": "deleted",
+    "created_at": "2026-05-01T07:25:32.865Z",
+    "deleted_at": "2026-05-01T08:07:39.395Z"
+  },
+  {
+    "id": "3f2462a1-cac9-4f5e-b009-53cd382fe139",
+    "title": "Buy milk",
+    "status": "deleted",
+    "created_at": "2026-05-01T07:31:19.426Z",
+    "deleted_at": "2026-05-01T08:07:36.971Z"
+  },
+  {
+    "id": "9294c873-6610-4c8f-9169-29d249ee84ee",
+    "title": "go for play at 9:30",
+    "status": "deleted",
+    "created_at": "2026-05-01T07:38:09.419Z",
+    "deleted_at": "2026-05-01T08:01:56.432Z"
+  },
+  {
+    "id": "98cf4fe2-3f97-4b7c-857b-7c3f33f2c3a6",
+    "title": "Test Task",
+    "status": "deleted",
+    "created_at": "2026-05-01T07:50:44.454Z",
+    "deleted_at": "2026-05-01T08:07:36.162Z"
+  },
+  {
+    "id": "207c9c25-181e-42cc-bf75-ad7c9a8f9a58",
+    "title": "go for play at 9:30",
+    "status": "deleted",
+    "created_at": "2026-05-01T07:57:55.624Z",
+    "deleted_at": "2026-05-01T08:07:34.861Z"
+  },
+  {
+    "id": "3edba834-951b-464d-8111-2973e17ec464",
+    "title": "buy groceries",
+    "status": "deleted",
+    "created_at": "2026-05-01T07:58:18.435Z",
+    "deleted_at": "2026-05-01T08:07:43.231Z"
+  },
+  {
+    "id": "242581fc-dc32-4200-96c3-17712af7e09e",
+    "title": "Verify Filter Task",
+    "status": "completed",
+    "created_at": "2026-05-01T08:03:59.938Z",
+    "completed_at": "2026-05-01T08:04:48.516Z"
+  },
+  {
+    "id": "ab76f332-63c3-4139-831b-62fbd20f413a",
+    "title": "bought notebooks",
+    "status": "deleted",
+    "created_at": "2026-05-01T08:08:20.835Z",
+    "updated_at": "2026-05-01T08:08:31.460Z",
+    "deleted_at": "2026-05-01T08:08:42.043Z"
+  },
+  {
+    "id": "1131c75f-cf39-4642-b6d4-e09d8569634c",
+    "title": "buy pens",
     "status": "pending",
-    "created_at": "2026-04-30T21:24:15.945Z"
+    "created_at": "2026-05-01T08:08:20.840Z"
+  },
+  {
+    "id": "f0e61ea4-9179-4548-bee5-957da26899b0",
+    "title": "buy clothes",
+    "status": "pending",
+    "created_at": "2026-05-01T08:08:20.846Z"
   }
 ]

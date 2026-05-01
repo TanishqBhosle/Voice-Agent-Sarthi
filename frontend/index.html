@@ -61,118 +61,97 @@
     <!-- ===== MAIN CONTENT ===== -->
     <main class="main-content">
 
-      <!-- ===== LEFT: CHAT PANEL ===== -->
-      <section class="panel chat-panel" id="chat-panel" aria-label="Conversation Panel">
+      <!-- ===== LEFT: MEMORY PANEL ===== -->
+      <section class="panel memory-panel" id="memory-panel" aria-label="Memory Panel">
         <div class="panel-header">
           <span class="panel-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-            Conversation
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.9L12 12l-2.9-3.1A4 4 0 0 1 12 2z"/><path d="M12 12v10"/><path d="M4 20h16"/></svg>
+            Memory
           </span>
-          <button class="btn-icon" id="clear-chat-btn" title="Clear Chat" style="border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            Clear
+          <span class="badge-added" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; background: hsla(190, 90%, 55%, 0.1); color: var(--accent-secondary);" id="memory-count">0</span>
+        </div>
+        <div class="quick-add-area">
+          <input type="text" id="quick-memory-input" placeholder="Store memory..." autocomplete="off">
+          <button id="quick-memory-btn" class="btn-quick-add btn-quick-mem" title="Add Memory">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
         </div>
-
-        <!-- Chat messages -->
-        <div class="chat-messages" id="chat-messages">
-          <div class="message message-assistant">
-            <div class="message-avatar">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-            </div>
-            <div class="message-content">
-              <p>Welcome back! I'm <strong>ARIA</strong>. How can I assist you today?</p>
-            </div>
+        <div class="memory-list" id="memory-list">
+          <div class="empty-state">
+            <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>
+            <p>Memory is empty.</p>
           </div>
-        </div>
-
-        <!-- Transcript bar (shows live STT) -->
-        <div class="transcript-bar" id="transcript-bar">
-          <div class="waveform" id="waveform">
-            <span></span><span></span><span></span><span></span><span></span>
-          </div>
-          <span id="transcript-text">Waiting for input...</span>
-        </div>
-
-        <!-- Text input area -->
-        <div class="text-input-area">
-          <input
-            type="text"
-            id="text-input"
-            placeholder="Type your message..."
-            autocomplete="off"
-            aria-label="Chat Message Input"
-          />
-          <button class="btn-send" id="send-btn" title="Send message" aria-label="Send Message">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-          </button>
         </div>
       </section>
 
-      <!-- ===== RIGHT PANEL ===== -->
-      <aside class="right-panel">
-
-        <!-- MIC BUTTON -->
-        <section class="mic-section" id="mic-section">
-          <div class="mic-wrapper">
-            <button class="mic-btn" id="mic-btn" title="Speak to ARIA" aria-label="Start Voice Interaction">
-              <svg class="mic-svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-            </button>
-          </div>
-          <p class="mic-label" id="mic-label">Click to Speak</p>
-        </section>
-
-        <!-- TASKS PANEL -->
-        <section class="panel tasks-panel" id="tasks-panel" aria-label="Tasks Panel">
-          <div class="panel-header">
-            <span class="panel-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-              Tasks
-            </span>
-            <span class="badge-added" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 6px;" id="task-count">0</span>
+      <!-- ===== CENTER: VOICE CONSOLE ===== -->
+      <section class="center-console" id="center-console">
+        <div class="center-top">
+          <div class="voice-prompt-text">
+            <p id="voice-prompt-example">"ARIA, summarize my schedule for tomorrow..."</p>
           </div>
 
-          <div class="quick-add-area">
-            <input type="text" id="quick-task-input" placeholder="New task..." autocomplete="off">
-            <button id="quick-task-btn" class="btn-quick-add" title="Add Task">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            </button>
-          </div>
-
-          <div class="tasks-list" id="tasks-list">
-            <div class="empty-state">
-              <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></div>
-              <p>No active tasks.</p>
+          <div class="mic-section" id="mic-section">
+            <div class="mic-wrapper">
+              <div class="mic-ring ring-1"></div>
+              <div class="mic-ring ring-2"></div>
+              <div class="mic-ring ring-3"></div>
+              <button class="mic-btn" id="mic-btn" title="Speak to ARIA" aria-label="Start Voice Interaction">
+                <svg class="mic-svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+              </button>
             </div>
           </div>
-        </section>
+        </div>
 
-        <!-- MEMORY PANEL -->
-        <section class="panel memory-panel" id="memory-panel" aria-label="Memory Panel">
-          <div class="panel-header">
-            <span class="panel-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.9L12 12l-2.9-3.1A4 4 0 0 1 12 2z"/><path d="M12 12v10"/><path d="M4 20h16"/></svg>
-              Memory
-            </span>
-            <span class="badge-added" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; background: hsla(190, 90%, 55%, 0.1); color: var(--accent-secondary);" id="memory-count">0</span>
+        <div class="chat-panel" id="chat-panel">
+          <div class="chat-messages" id="chat-messages">
+            <!-- Messages appear here -->
+          </div>
+          
+          <div class="processing-panel" id="transcript-bar">
+            <div class="processing-header">
+              <span class="processing-title">AARVIX PROCESSING ...</span>
+            </div>
+            <p class="transcript-text" id="transcript-text">Waiting for input...</p>
           </div>
 
-          <div class="quick-add-area">
-            <input type="text" id="quick-memory-input" placeholder="Store memory..." autocomplete="off">
-            <button id="quick-memory-btn" class="btn-quick-add btn-quick-mem" title="Add Memory">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <div class="text-input-area">
+            <input type="text" id="text-input" placeholder="Type a message..." autocomplete="off">
+            <button class="btn-send" id="send-btn" title="Send Message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
           </div>
+        </div>
+      </section>
 
-          <div class="memory-list" id="memory-list">
-            <div class="empty-state">
-              <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>
-              <p>Memory is empty.</p>
-            </div>
+      <!-- ===== RIGHT: TASKS PANEL ===== -->
+      <section class="panel tasks-panel" id="tasks-panel" aria-label="Tasks Panel">
+        <div class="panel-header">
+          <span class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            Tasks
+          </span>
+          <span class="badge-added" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 6px;" id="task-count">0</span>
+          <button class="btn-icon" id="quick-task-toggle" style="background: var(--accent-primary); border:none; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0;">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </div>
+        
+        <div class="quick-add-area" style="display:none;" id="task-quick-add-wrap">
+          <input type="text" id="quick-task-input" placeholder="New task..." autocomplete="off">
+          <button id="quick-task-btn" class="btn-quick-add" title="Add Task">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </div>
+
+        <div class="tasks-list" id="tasks-list">
+          <div class="empty-state">
+            <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></div>
+            <p>No active tasks.</p>
           </div>
-        </section>
+        </div>
+      </section>
 
-      </aside>
     </main>
 
     <!-- ===== FOOTER ===== -->

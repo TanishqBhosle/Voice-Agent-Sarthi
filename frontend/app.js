@@ -180,7 +180,7 @@ function startListening() {
     recognition.start();
     isListening = true;
     micBtn.classList.add('listening');
-    micLabel.textContent = 'Listening...';
+    if (micLabel) micLabel.textContent = 'Listening...';
     transcriptBar.classList.add('active');
     setStatus('listening', 'Listening');
   } catch (err) { console.error(err); }
@@ -191,7 +191,7 @@ function stopListening() {
   isListening = false;
   try { recognition.stop(); } catch(e) {}
   micBtn.classList.remove('listening');
-  micLabel.textContent = 'Click to speak';
+  if (micLabel) micLabel.textContent = 'Click to speak';
   transcriptBar.classList.remove('active');
   setStatus('', 'Ready');
 }
@@ -227,7 +227,7 @@ async function sendMessage(text) {
   if (!text || text.trim() === '') return;
 
   appendMessage('user', text);
-  textInput.value = '';
+  if (textInput) textInput.value = '';
   setStatus('thinking', 'Thinking...');
 
   try {
@@ -295,8 +295,15 @@ function appendMessage(role, text, toolCalls = []) {
 
   msg.appendChild(avatar);
   msg.appendChild(content);
-  chatMessages.appendChild(msg);
-  chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+  if (chatMessages) {
+    chatMessages.appendChild(msg);
+    chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+  } else {
+    // If there is no chat history UI, we still want to show the transcript or response
+    if (transcriptTxt && role === 'assistant') {
+      transcriptTxt.textContent = text;
+    }
+  }
 }
 
 // =============================================
@@ -304,10 +311,11 @@ function appendMessage(role, text, toolCalls = []) {
 // =============================================
 
 function renderTasks(tasks) {
-  taskCount.textContent = tasks.length;
+  const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'deleted');
+  if (taskCount) taskCount.textContent = activeTasks.length;
   tasksList.innerHTML = '';
 
-  if (tasks.length === 0) {
+  if (activeTasks.length === 0) {
     tasksList.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon-wrap"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></div>
@@ -316,7 +324,7 @@ function renderTasks(tasks) {
     return;
   }
 
-  tasks.forEach(task => {
+  activeTasks.forEach(task => {
     const item = document.createElement('div');
     item.className = `task-item ${task.status === 'completed' ? 'completed' : ''} ${task.status === 'deleted' ? 'deleted' : ''}`;
     
@@ -332,7 +340,7 @@ function renderTasks(tasks) {
     }
 
     item.innerHTML = `
-      <div class="task-check" title="Toggle completion" style="${task.status === 'deleted' ? 'visibility:hidden' : ''}"></div>
+      <div class="task-check" title="Toggle completion"></div>
       <div class="task-info">
         <span class="task-title">${task.title}</span>
         <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
@@ -340,10 +348,9 @@ function renderTasks(tasks) {
           <span class="task-meta">Created ${new Date(task.created_at).toLocaleDateString()}</span>
         </div>
       </div>
-      ${task.status !== 'deleted' ? `
       <button class="btn-delete" title="Delete task">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-      </button>` : ''}
+      </button>
     `;
 
     const checkBtn = item.querySelector('.task-check');
@@ -357,7 +364,7 @@ function renderTasks(tasks) {
 }
 
 function renderMemories(memories) {
-  memoryCount.textContent = memories.length;
+  if (memoryCount) memoryCount.textContent = memories.length;
   memoryList.innerHTML = '';
 
   if (memories.length === 0) {
@@ -424,19 +431,27 @@ quickMemBtn.onclick = () => addMemory(quickMemInput.value);
 quickMemInput.onkeydown = (e) => { if (e.key === 'Enter') addMemory(quickMemInput.value); };
 
 // Chat Input
-textInput.onkeydown = (e) => { if (e.key === 'Enter') sendMessage(textInput.value); };
-sendBtn.onclick = () => sendMessage(textInput.value);
+if (textInput) textInput.onkeydown = (e) => { if (e.key === 'Enter') sendMessage(textInput.value); };
+if (sendBtn) sendBtn.onclick = () => sendMessage(textInput.value);
 
 // Header Actions
-resetBtn.onclick = async () => {
+if (resetBtn) resetBtn.onclick = async () => {
   await apiAction('/reset', 'POST');
   showToast('Conversation reset');
-  chatMessages.innerHTML = '';
+  if (chatMessages) chatMessages.innerHTML = '';
 };
-clearChatBtn.onclick = () => {
-  chatMessages.innerHTML = '';
+if (clearChatBtn) clearChatBtn.onclick = () => {
+  if (chatMessages) chatMessages.innerHTML = '';
   showToast('Chat cleared');
 };
+
+const taskQuickAddToggle = document.getElementById('quick-task-toggle');
+const taskQuickAddWrap = document.getElementById('task-quick-add-wrap');
+if (taskQuickAddToggle && taskQuickAddWrap) {
+  taskQuickAddToggle.onclick = () => {
+    taskQuickAddWrap.style.display = taskQuickAddWrap.style.display === 'none' ? 'flex' : 'none';
+  };
+}
 
 // Initial Load
 async function init() {
