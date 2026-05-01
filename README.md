@@ -4,6 +4,8 @@ A premium, fully-local AI voice assistant that manages your to-do list, remember
 
 ---
 
+Live Link - https://voice-agent-sarthi.vercel.app/
+
 ## ✨ Features
 
 | Feature | Details |
